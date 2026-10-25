@@ -1,0 +1,19 @@
+name: flyboard-phase4-test
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment: {POSTGRES_DB: flyboard_test, POSTGRES_USER: flyboard, POSTGRES_PASSWORD: test}
+    healthcheck: {test: [CMD-SHELL, "pg_isready -U flyboard -d flyboard_test"], interval: 1s, timeout: 2s, retries: 30}
+  valkey:
+    image: valkey/valkey:8-alpine
+  test:
+    image: golang:1.24-alpine
+    working_dir: /src
+    volumes: [.:/src]
+    environment:
+      TEST_DATABASE_URL: postgres://flyboard:test@postgres:5432/flyboard_test?sslmode=disable
+      TEST_VALKEY_URL: redis://valkey:6379/15
+    depends_on:
+      postgres: {condition: service_healthy}
+      valkey: {condition: service_started}
+    command: [go, test, ./...]

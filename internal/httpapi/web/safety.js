@@ -1,0 +1,8 @@
+"use strict";
+(function(root,factory){const api=factory();if(typeof module==="object"&&module.exports)module.exports=api;else root.FlyboardSafety=api})(typeof globalThis!=="undefined"?globalThis:this,function(){
+ const MAX_DISPLAY=4096,MAX_RESPONSE=1024*1024;
+ function display(value,limit=MAX_DISPLAY){let out;if(value==null)out="";else if(typeof value==="object"){try{out=JSON.stringify(value)}catch(_){out="[无法显示的值]"}}else out=String(value);return out.length>limit?out.slice(0,limit)+"…（已截断）":out}
+ function errorMessage(payload,status){if(payload&&typeof payload==="object"){if(typeof payload.error==="string"&&payload.error.trim())return display(payload.error);if(typeof payload.message==="string"&&payload.message.trim())return display(payload.message);if(payload.errors&&typeof payload.errors==="object"){const parts=[];for(const [field,value] of Object.entries(payload.errors).slice(0,20)){const message=Array.isArray(value)?value.join("；"):value;parts.push(`${display(field,100)}：${display(message,300)}`)}if(parts.length)return parts.join("；")}}return `请求失败（HTTP ${status}）`}
+ async function parseResponse(response){if(response.status===204||response.status===205)return {};const type=(response.headers&&response.headers.get("content-type")||"").toLowerCase();const declared=Number(response.headers&&response.headers.get("content-length")||0);if(declared>MAX_RESPONSE)throw Error("服务器响应过大，已拒绝显示");if(!type.includes("application/json"))throw Error(response.ok?"服务器返回了非 JSON 响应":"请求失败（服务器返回了非 JSON 响应）");const raw=await response.text();if(raw.length>MAX_RESPONSE)throw Error("服务器响应过大，已拒绝显示");if(!raw.trim())return {};try{return JSON.parse(raw)}catch(_){throw Error("服务器返回了无效 JSON")}}
+ return {MAX_DISPLAY,MAX_RESPONSE,display,errorMessage,parseResponse};
+});

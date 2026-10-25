@@ -1,0 +1,71 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    mem_limit: 384m
+    cpus: 0.75
+    environment: {POSTGRES_DB: flyboard, POSTGRES_USER: flyboard, POSTGRES_PASSWORD_FILE: /run/secrets/db_password}
+    secrets: [db_password]
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck: {test: [CMD-SHELL, "pg_isready -U flyboard -d flyboard"], interval: 5s, timeout: 3s, retries: 20}
+  valkey:
+    image: valkey/valkey:8-alpine
+    mem_limit: 256m
+    cpus: 0.50
+    command: [sh, -c, 'exec valkey-server --requirepass "$$(cat /run/secrets/valkey_password)" --save "" --appendonly no']
+    secrets: [valkey_password]
+    healthcheck: {test: [CMD-SHELL, 'valkey-cli -a "$$(cat /run/secrets/valkey_password)" ping 2>/dev/null | grep -q PONG'], interval: 5s, timeout: 3s, retries: 20}
+  migrate:
+    build: {context: ., args: {TARGET: flyboardctl}}
+    environment: &env
+      DATABASE_URL_FILE: /run/secrets/database_url
+      ADMIN_PATH_FILE: /run/secrets/admin_path
+      MASTER_KEY_FILE: /run/secrets/master_key
+      VALKEY_URL_FILE: /run/secrets/valkey_url
+    depends_on: {postgres: {condition: service_healthy}}
+    secrets: [database_url, admin_path, master_key, valkey_url]
+  panel:
+    build: {context: ., args: {TARGET: panel}}
+    environment:
+      <<: *env
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
+      LOGIN_RATE_LIMIT: ${LOGIN_RATE_LIMIT:-10}
+      SUBSCRIPTION_RATE_LIMIT: ${SUBSCRIPTION_RATE_LIMIT:-120}
+      NODE_RATE_LIMIT: ${NODE_RATE_LIMIT:-300}
+      ADMIN_RATE_LIMIT: ${ADMIN_RATE_LIMIT:-600}
+      RATE_LIMIT_WINDOW: ${RATE_LIMIT_WINDOW:-1m}
+    secrets: [database_url, admin_path, master_key, valkey_url]
+    ports: ["${FLYBOARD_BIND:-127.0.0.1}:${FLYBOARD_PORT:-8080}:8080"]
+    depends_on: {postgres: {condition: service_healthy}, valkey: {condition: service_healthy}}
+    healthcheck: {test: [CMD, wget, -qO-, http://127.0.0.1:8080/health/ready], interval: 5s, timeout: 3s, retries: 20}
+  worker:
+    build: {context: ., args: {TARGET: worker}}
+    environment: *env
+    secrets: [database_url, admin_path, master_key, valkey_url]
+    depends_on: {postgres: {condition: service_healthy}, valkey: {condition: service_healthy}}
+  scheduler:
+    build: {context: ., args: {TARGET: scheduler}}
+    environment: *env
+    secrets: [database_url, admin_path, master_key, valkey_url]
+    depends_on: {postgres: {condition: service_healthy}, valkey: {condition: service_healthy}}
+  node-agent:
+    profiles: [agent]
+    build: {context: ., args: {TARGET: node-agent}}
+    environment:
+      PANEL_WS_URL: ${PANEL_WS_URL:-}
+      NODE_ID: ${NODE_ID:-}
+      NODE_TOKEN: ${NODE_TOKEN:-}
+      AGENT_LOCAL_TOKEN: ${AGENT_LOCAL_TOKEN:-}
+    volumes: [agentdata:/var/lib/flyboard]
+  flyboardctl:
+    profiles: [tools]
+    build: {context: ., args: {TARGET: flyboardctl}}
+    environment: *env
+    secrets: [database_url, admin_path, master_key, valkey_url]
+secrets:
+  db_password: {file: ./secrets/db_password}
+  admin_path: {file: ./secrets/admin_path}
+  database_url: {file: ./secrets/database_url}
+  master_key: {file: ./secrets/master_key}
+  valkey_password: {file: ./secrets/valkey_password}
+  valkey_url: {file: ./secrets/valkey_url}
+volumes: {pgdata: {}, agentdata: {}}

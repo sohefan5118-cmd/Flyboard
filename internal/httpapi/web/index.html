@@ -1,0 +1,16 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Flyboard Console</title>
+  <link rel="stylesheet" href="./app.css">
+</head>
+<body>
+  <aside><b>Flyboard</b><small>CONTROL PLANE</small><nav aria-label="管理页面"></nav><button id="logout" type="button">退出</button></aside>
+  <main><header><div><h1 id="title">概览</h1><p id="subtitle">独立、安全、可审计的节点控制台</p></div><span id="health" role="status" aria-live="polite">● 已连接</span></header><div id="notice" class="sr-only" role="status" aria-live="polite"></div><section id="content" aria-live="polite" aria-busy="false"></section></main>
+  <dialog id="modal" aria-labelledby="modalTitle"><form method="dialog" id="form"><h2 id="modalTitle"></h2><div id="fields"></div><menu><button value="cancel" type="button" id="cancel">取消</button><button id="save" type="submit">保存</button></menu></form></dialog>
+  <dialog id="secretModal" aria-labelledby="secretTitle" aria-describedby="secretHelp"><section><h2 id="secretTitle">一次性凭据</h2><p id="secretHelp">此值仅显示一次，请立即安全保存。</p><pre id="secretValue" tabindex="0"></pre><button id="secretCopy" type="button">复制</button><button id="secretClose" type="button">我已保存</button></section></dialog>
+  <script src="./safety.js" defer></script><script src="./app.js" defer></script>
+</body>
+</html>
