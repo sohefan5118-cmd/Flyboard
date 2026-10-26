@@ -11,6 +11,7 @@
   <main><header><div><h1 id="title">概览</h1><p id="subtitle">独立、安全、可审计的节点控制台</p></div><span id="health" role="status" aria-live="polite">● 已连接</span></header><div id="notice" class="sr-only" role="status" aria-live="polite"></div><section id="content" aria-live="polite" aria-busy="false"></section></main>
   <dialog id="modal" aria-labelledby="modalTitle"><form method="dialog" id="form"><h2 id="modalTitle"></h2><div id="fields"></div><menu><button value="cancel" type="button" id="cancel">取消</button><button id="save" type="submit">保存</button></menu></form></dialog>
   <dialog id="secretModal" aria-labelledby="secretTitle" aria-describedby="secretHelp"><section><h2 id="secretTitle">一次性凭据</h2><p id="secretHelp">此值仅显示一次，请立即安全保存。</p><pre id="secretValue" tabindex="0"></pre><button id="secretCopy" type="button">复制</button><button id="secretClose" type="button">我已保存</button></section></dialog>
+  <dialog id="loginModal" aria-labelledby="loginTitle"><form id="loginForm"><h2 id="loginTitle">登录 Flyboard</h2><p>请输入安装时显示的管理员账号和一次性密码。</p><label>管理员邮箱<input id="loginEmail" name="email" type="email" autocomplete="username" required></label><label>密码<input id="loginPassword" name="password" type="password" autocomplete="current-password" required></label><p id="loginError" class="danger" role="alert" aria-live="polite"></p><button id="loginSubmit" class="btn" type="submit">登录</button></form></dialog>
   <script src="./safety.js" defer></script><script src="./app.js" defer></script>
 </body>
 </html>
