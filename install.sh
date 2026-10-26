@@ -20,6 +20,12 @@ ADMIN_PATH="$(cat secrets/admin_path)"
 FLYBOARD_PORT="${FLYBOARD_PORT:-7001}"
 FLYBOARD_BIND="${FLYBOARD_BIND:-0.0.0.0}"
 export ADMIN_PATH FLYBOARD_PORT FLYBOARD_BIND
+# Persist networking choices so later `docker compose up` and upgrades cannot
+# silently fall back to a different port/bind address.
+if [[ ! -s .env ]]; then
+  printf 'FLYBOARD_PORT=%s\nFLYBOARD_BIND=%s\n' "$FLYBOARD_PORT" "$FLYBOARD_BIND" >.env
+  chmod 600 .env
+fi
 docker compose up -d postgres valkey
 docker compose run --rm migrate migrate up
 

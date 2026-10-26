@@ -34,7 +34,7 @@ services:
       ADMIN_RATE_LIMIT: ${ADMIN_RATE_LIMIT:-600}
       RATE_LIMIT_WINDOW: ${RATE_LIMIT_WINDOW:-1m}
     secrets: [database_url, admin_path, master_key, valkey_url]
-    ports: ["${FLYBOARD_BIND:-127.0.0.1}:${FLYBOARD_PORT:-8080}:8080"]
+    ports: ["${FLYBOARD_BIND:-0.0.0.0}:${FLYBOARD_PORT:-7001}:8080"]
     depends_on: {postgres: {condition: service_healthy}, valkey: {condition: service_healthy}}
     healthcheck: {test: [CMD, wget, -qO-, http://127.0.0.1:8080/health/ready], interval: 5s, timeout: 3s, retries: 20}
   worker:
