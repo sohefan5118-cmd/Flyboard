@@ -33,6 +33,17 @@ docker compose up -d panel worker scheduler
 for _ in $(seq 1 90); do curl -fsS "http://127.0.0.1:${FLYBOARD_PORT}/health/ready" >/dev/null && ready=1 && break; sleep 2; done
 [[ "${ready:-}" == 1 ]] || { docker compose ps >&2; echo "Flyboard failed readiness" >&2; exit 1; }
 
+# Do not report a successful installation unless the randomized management
+# shell and every browser asset it depends on are actually reachable.
+admin_base="http://127.0.0.1:${FLYBOARD_PORT}/${ADMIN_PATH}"
+curl -fsS "${admin_base}/flyboard" >/dev/null
+for asset in app.css app.js safety.js; do
+  curl -fsS "${admin_base}/${asset}" >/dev/null || {
+    echo "Flyboard management asset is unavailable: ${asset}" >&2
+    exit 1
+  }
+done
+
 # Bootstrap exactly once. Credentials exist only in memory and this one terminal output.
 if [[ ! -e secrets/bootstrap.complete ]]; then
   token="$(docker compose run --rm migrate bootstrap-token | tail -n 1)"
@@ -41,7 +52,14 @@ if [[ ! -e secrets/bootstrap.complete ]]; then
   payload="$(printf '{\"Token\":\"%s\",\"Email\":\"%s\",\"Password\":\"%s\"}' "$token" "$email" "$password")"
   curl -fsS -H 'Content-Type: application/json' --data "$payload" "http://127.0.0.1:${FLYBOARD_PORT}/bootstrap" >/dev/null
   : >secrets/bootstrap.complete; chmod 600 secrets/bootstrap.complete
-  public_host="${FLYBOARD_PUBLIC_HOST:-SERVER_IP}"
+  if [[ -n "${FLYBOARD_PUBLIC_HOST:-}" ]]; then
+    public_host="$FLYBOARD_PUBLIC_HOST"
+  elif [[ "$FLYBOARD_BIND" == "127.0.0.1" || "$FLYBOARD_BIND" == "localhost" ]]; then
+    public_host="127.0.0.1"
+  else
+    public_host="$(hostname -I 2>/dev/null | awk '{print $1}')"
+  fi
+  public_host="${public_host:-SERVER_IP}"
   printf 'Flyboard is ready.\nAdmin URL: http://%s:%s/%s/flyboard\nAdmin email: %s\nOne-time password: %s\nSave these credentials now; the password is shown only once.\n' "$public_host" "$FLYBOARD_PORT" "$ADMIN_PATH" "$email" "$password"
 else
   printf 'Flyboard is ready (existing installation; credentials were not reissued).\n'

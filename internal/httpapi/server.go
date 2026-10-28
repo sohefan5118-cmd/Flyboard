@@ -79,6 +79,7 @@ func New(c config.Config, s *store.Store, l *slog.Logger) http.Handler {
 	m.HandleFunc("GET /"+c.AdminPath+"/flyboard", x.shell)
 	m.HandleFunc("GET /"+c.AdminPath+"/app.css", x.asset)
 	m.HandleFunc("GET /"+c.AdminPath+"/app.js", x.asset)
+	m.HandleFunc("GET /"+c.AdminPath+"/safety.js", x.asset)
 	return security(m)
 }
 

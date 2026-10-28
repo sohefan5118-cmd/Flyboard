@@ -127,7 +127,7 @@ ls -la install.sh compose.yaml Dockerfile
 nproc
 free -h
 df -h /
-sudo ss -lntp | grep -E ':(80|443|8080)\b' || true
+sudo ss -lntp | grep -E ':(80|443|7001)\b' || true
 docker ps
 ```
 
@@ -135,7 +135,7 @@ docker ps
 
 - 可用内存至少 3 GB；本地首次构建时越多越好。
 - 磁盘至少剩余 20 GB。
-- Flyboard 默认只监听 `127.0.0.1:8080`，不会直接暴露公网。
+- Flyboard 快速安装默认监听 `0.0.0.0:7001`，可直接通过服务器 IP 访问；生产环境请用防火墙限制访问并尽快配置 HTTPS。
 - 安装脚本采用 `COMPOSE_PARALLEL_LIMIT=1`，避免并行构建压垮小服务器。
 
 检查 Compose 配置（只读验证，不启动服务）：
@@ -150,11 +150,17 @@ echo "Compose 配置检查通过"
 
 ## 6. 一键安装 Flyboard（真正执行，会创建容器、卷和密钥）
 
-### 默认端口 8080
+### 默认端口 7001
 
 ```bash
 cd /opt/flyboard
 sudo ./install.sh | tee /root/flyboard-first-install.txt
+```
+
+安装器会优先自动显示服务器地址。若服务器位于 NAT 后、自动显示的不是公网地址，可显式指定：
+
+```bash
+sudo env FLYBOARD_PUBLIC_HOST='你的公网IP或域名' ./install.sh | tee /root/flyboard-first-install.txt
 ```
 
 ### 自定义本机监听端口
@@ -186,7 +192,7 @@ sudo env \
 4. 启动 PostgreSQL 与 Valkey；
 5. 执行数据库迁移；
 6. 启动 panel、worker、scheduler；
-7. 等待健康检查；
+7. 等待健康检查，并确认管理页面、CSS、JavaScript 与安全解析器均可访问；
 8. 首次安装时只输出一次管理员邮箱和密码。
 
 请立即保存输出中的：
@@ -215,11 +221,11 @@ sudo docker compose ps
 默认端口：
 
 ```bash
-curl -fsS http://127.0.0.1:8080/health/live && echo
-curl -fsS http://127.0.0.1:8080/health/ready && echo
+curl -fsS http://127.0.0.1:7001/health/live && echo
+curl -fsS http://127.0.0.1:7001/health/ready && echo
 ```
 
-自定义端口请替换 `8080`。
+自定义端口请替换 `7001`。
 
 ### 查看日志（只读）
 
@@ -252,7 +258,7 @@ https://你的域名/随机管理路径/flyboard
 
 ## 8. 配置 HTTPS 反向代理
 
-Flyboard 默认仅绑定 `127.0.0.1:8080`。推荐使用 Nginx Proxy Manager、Nginx 或 Caddy 在 443 端口终止 TLS。
+Flyboard 快速安装默认绑定 `0.0.0.0:7001`。生产环境推荐在防火墙中限制 7001，并使用 Nginx Proxy Manager、Nginx 或 Caddy 在 443 端口终止 TLS；也可安装时设置 `FLYBOARD_BIND=127.0.0.1`。
 
 ### Nginx 示例
 
@@ -277,7 +283,7 @@ server {
     client_max_body_size 10m;
 
     location / {
-        proxy_pass http://127.0.0.1:8080;
+        proxy_pass http://127.0.0.1:7001;
         proxy_http_version 1.1;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
@@ -320,7 +326,7 @@ curl -fsS https://panel.example.com/health/ready && echo
 ### Nginx Proxy Manager
 
 - Forward Hostname/IP：`127.0.0.1`（如果 NPM 在宿主网络可访问该地址）或宿主机可达地址
-- Forward Port：`8080`
+- Forward Port：`7001`
 - Scheme：`http`
 - 开启 Websockets Support
 - SSL 页面申请证书并开启 Force SSL
@@ -365,7 +371,7 @@ sudo ufw enable
 sudo ufw status verbose
 ```
 
-不要开放 PostgreSQL 5432、Valkey 6379 或 Flyboard 本地端口 8080 到公网。
+不要开放 PostgreSQL 5432、Valkey 6379 或 Flyboard 面板端口 7001（除非确需直接访问）到公网。
 
 ---
 
@@ -430,7 +436,7 @@ sudo env \
 ```bash
 cd /opt/flyboard
 sudo docker compose ps
-curl -fsS http://127.0.0.1:8080/health/ready && echo
+curl -fsS http://127.0.0.1:7001/health/ready && echo
 sudo docker compose logs --tail=100 panel worker scheduler
 ```
 
@@ -463,7 +469,7 @@ sudo ./upgrade.sh
 ```bash
 cd /opt/flyboard
 sudo docker compose ps
-curl -fsS http://127.0.0.1:8080/health/ready && echo
+curl -fsS http://127.0.0.1:7001/health/ready && echo
 sudo docker compose logs --tail=100 panel worker scheduler
 ```
 
@@ -524,12 +530,12 @@ sudo docker compose ps
 sudo docker compose logs --tail=200 postgres valkey panel worker scheduler
 ```
 
-### 8080 被占用
+### 7001 被占用
 
 只读检查：
 
 ```bash
-sudo ss -lntp | grep ':8080'
+sudo ss -lntp | grep ':7001'
 ```
 
 改用其他端口重新运行：
@@ -568,8 +574,8 @@ sudo docker compose run --rm migrate doctor
 ```bash
 cd /opt/flyboard
 sudo docker compose ps
-curl -fsS http://127.0.0.1:8080/health/live
-curl -fsS http://127.0.0.1:8080/health/ready
+curl -fsS http://127.0.0.1:7001/health/live
+curl -fsS http://127.0.0.1:7001/health/ready
 sudo docker compose logs --tail=80 panel worker scheduler
 ```
 
